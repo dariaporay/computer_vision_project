@@ -14,10 +14,11 @@ h, w, _ = frame.shape
 helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
 fl_figure = 0
 fl = False
-x_1 = 0
-y_1 = 0
+x_const = 0
+y_const = 0
 color = (0, 255, 0)
 eps = 20
+size = 3
 while cap.isOpened():
     ret, frame = cap.read()
     if cv2.waitKey(1) & 0xFF == ord('q') or not ret:
@@ -62,40 +63,52 @@ while cap.isOpened():
                        flippedRGB.shape[1])
         y_ring = int(results.multi_hand_landmarks[0].landmark[5].y *
                        flippedRGB.shape[0])
-
-        if abs(x_big - x_index) < eps and abs(y_big - y_index) < eps:
-            if fl:
-                cv2.circle(flippedRGB, (x_1, y_1), int(math.hypot(x_1 - x_index, y_1 - y_index)),
-                           (0, 0, 255), 5)
-            else:
-                fl_figure = 2
-                fl = True
-                x_1, y_1 = x_index, y_index
-                cv2.circle(flippedRGB, (x_index, y_index), 5, (0, 0, 255), -1)
-
-        elif abs(x_noname - x_index) < eps and abs(y_noname - y_index) < eps:
-            if fl:
-                cv2.line(flippedRGB, (x_1, y_1), (x_index, y_index), (255, 0, 0), 5)
-            else:
-                fl_figure = 1
-                fl = True
-                x_1, y_1 = x_index, y_index
-                cv2.circle(flippedRGB, (x_index, y_index), 5, (255, 0, 0), -1)
-
-        elif abs(x_big - x_little) < eps and abs(y_big - y_little) < eps:
-            cv2.circle(helped_picture, (x_index, y_index), 5, (0, 255, 0), -1)
-
-        elif abs(x_big - x_middle) < eps and abs(y_big - y_middle) < eps:
-            cv2.circle(helped_picture, (x_index, y_index), 20, (0, 0, 0), -1)
-        else:
-            if fl:
-                if fl_figure == 1:
-                    cv2.line(helped_picture, (x_1, y_1), (x_index, y_index), (255, 0, 0), 5)
-                elif fl_figure == 2:
-                    cv2.circle(helped_picture, (x_1, y_1), int(math.hypot(x_1 - x_index, y_1 - y_index))
-                               , (0, 0, 255), 5)
+        x_17 = int(results.multi_hand_landmarks[0].landmark[17].x *
+                     flippedRGB.shape[1])
+        x_13 = int(results.multi_hand_landmarks[0].landmark[13].x *
+                     flippedRGB.shape[1])
+        y_17 = int(results.multi_hand_landmarks[0].landmark[17].y *
+                     flippedRGB.shape[0])
+        y_0 = int(results.multi_hand_landmarks[0].landmark[0].y *
+                     flippedRGB.shape[0])
+        y_1 = int(results.multi_hand_landmarks[0].landmark[0].y *
+                  flippedRGB.shape[0])
+        if y_17 - y_0 > 0 or x_13 - x_17 > 0 or y_1 - y_0 > 8:
             fl = False
-            fl_figure = 0
+        else:
+            if abs(x_big - x_index) < eps and abs(y_big - y_index) < eps:
+                if fl:
+                    cv2.circle(flippedRGB, (x_const, y_const), int(math.hypot(x_const - x_index, y_const - y_index)),
+                               (0, 0, 255), size)
+                else:
+                    fl_figure = 2
+                    fl = True
+                    x_const, y_const = x_index, y_index
+                    cv2.circle(flippedRGB, (x_index, y_index), size, (0, 0, 255), -1)
+
+            elif abs(x_noname - x_index) < eps and abs(y_noname - y_index) < eps:
+                if fl:
+                    cv2.line(flippedRGB, (x_const, y_const), (x_index, y_index), (255, 0, 0), size)
+                else:
+                    fl_figure = 1
+                    fl = True
+                    x_const, y_const = x_index, y_index
+                    cv2.circle(flippedRGB, (x_index, y_index), size, (255, 0, 0), -1)
+
+            elif abs(x_big - x_little) < eps and abs(y_big - y_little) < eps:
+                cv2.circle(helped_picture, (x_index, y_index), size, (0, 255, 0), -1)
+
+            elif abs(x_big - x_middle) < eps and abs(y_big - y_middle) < eps:
+                cv2.circle(helped_picture, (x_index, y_index), 20, (0, 0, 0), -1)
+            else:
+                if fl:
+                    if fl_figure == 1:
+                        cv2.line(helped_picture, (x_const, y_const), (x_index, y_index), (255, 0, 0), size)
+                    elif fl_figure == 2:
+                        cv2.circle(helped_picture, (x_const, y_const),
+                                   int(math.hypot(x_const - x_index, y_const - y_index)), (0, 0, 255), size)
+                fl = False
+                fl_figure = 0
 
     # переводим в BGR и показываем результат
     helped_mask = cv2.cvtColor(helped_picture, cv2.COLOR_BGR2GRAY)
