@@ -13,8 +13,10 @@ ret, frame = cap.read()
 h, w, _ = frame.shape
 print(h, w)
 helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
+bin = cv2.imread("RecycleBin.png")
 picture_no_draw_zone = np.zeros((60, w, 3), dtype=np.uint8)
 picture_no_draw_zone[:4, :] = (219, 215, 210)
+picture_no_draw_zone[30:, w - 30:] = bin
 fl_figure = 0
 fl = False
 x_const = 0
@@ -75,7 +77,7 @@ while cap.isOpened():
                        flippedRGB.shape[0])
         x_17 = int(results.multi_hand_landmarks[0].landmark[17].x *
                      flippedRGB.shape[1])
-        x_13 = int(results.multi_hand_landmarks[0].landmark[13].x *
+        x_13 = int(results.multi_hand_landmarks[0].landmark[10].x *
                        flippedRGB.shape[1])
         y_17 = int(results.multi_hand_landmarks[0].landmark[17].y *
                        flippedRGB.shape[0])
@@ -83,8 +85,12 @@ while cap.isOpened():
                        flippedRGB.shape[0])
         y_1 = int(results.multi_hand_landmarks[0].landmark[1].y *
                        flippedRGB.shape[0])
+
+        # очистка холста
+        if 0 < h - y_index < 30 and 0 < w - x_index < 30:
+            helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
         # ставим ограничения на положение руки во время рисования
-        if y_17 - y_0 > 10 or k * (x_13 - x_17) > 10 or (y_1 - y_0) > 10:
+        if y_17 - y_0 > 20 or k * (x_index - x_little) > 5 or (y_1 - y_0) > 20:
             fl = False
         # ограничения пройдены, можно рисовать
         else:
@@ -120,11 +126,12 @@ while cap.isOpened():
             # фиксирование конечной версии отрезка или окружности на вспомогательный холст
             else:
                 if fl:
-                    if fl_figure == 1:
-                        cv2.line(helped_picture, (x_const, y_const), (x_index, y_index), (255, 0, 0), size)
-                    elif fl_figure == 2:
-                        cv2.circle(helped_picture, (x_const, y_const),
-                                   int(math.hypot(x_const - x_index, y_const - y_index)), (0, 0, 255), size)
+                    if not (h - 60 <= y_index or h - 60 <= y_const):
+                        if fl_figure == 1:
+                            cv2.line(helped_picture, (x_const, y_const), (x_index, y_index), (255, 0, 0), size)
+                        elif fl_figure == 2:
+                            cv2.circle(helped_picture, (x_const, y_const),
+                                       int(math.hypot(x_const - x_index, y_const - y_index)), (0, 0, 255), size)
                 fl = False
                 fl_figure = 0
 
