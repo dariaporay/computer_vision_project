@@ -8,9 +8,10 @@ handsDetector = mp.solutions.hands.Hands(static_image_mode=False,
                    max_num_hands=1,
                    min_detection_confidence=0.9,
                    min_tracking_confidence=0.9)
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 ret, frame = cap.read()
 h, w, _ = frame.shape
+print(h, w)
 helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
 bin = cv2.imread("images/RecycleBin.png")
 picture_no_draw_zone = np.zeros((60, w, 3), dtype=np.uint8)
