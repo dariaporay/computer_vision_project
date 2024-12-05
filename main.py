@@ -43,9 +43,7 @@ while cap.isOpened():
             k = -1
         else:
             k = 1
-
-        # mp.solutions.drawing_utils.draw_landmarks(flippedRGB, results.multi_hand_landmarks[0])
-
+            
         # находим координате тех, точек которые нам нужны
         # нужно умножить координаты а размеры картинки
         x_index = int(results.multi_hand_landmarks[0].landmark[8].x *
