@@ -37,13 +37,14 @@ while cap.isOpened():
     results = handsDetector.process(flippedRGB)
     # анализируем изображение, если распозналось
     if results.multi_hand_landmarks is not None:
+        
         # понимаем какая рука: левая или правая
         hand = results.multi_handedness[0].classification[0].label
         if hand == "Left":
             k = -1
         else:
             k = 1
-            
+
         # находим координате тех, точек которые нам нужны
         # нужно умножить координаты а размеры картинки
         x_index = int(results.multi_hand_landmarks[0].landmark[8].x *
