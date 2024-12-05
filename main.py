@@ -37,7 +37,7 @@ while cap.isOpened():
     results = handsDetector.process(flippedRGB)
     # анализируем изображение, если распозналось
     if results.multi_hand_landmarks is not None:
-        
+
         # понимаем какая рука: левая или правая
         hand = results.multi_handedness[0].classification[0].label
         if hand == "Left":
