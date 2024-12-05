@@ -8,7 +8,7 @@ handsDetector = mp.solutions.hands.Hands(static_image_mode=False,
                    max_num_hands=1,
                    min_detection_confidence=0.9,
                    min_tracking_confidence=0.9)
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 ret, frame = cap.read()
 h, w, _ = frame.shape
 print(h, w)
@@ -17,11 +17,13 @@ bin = cv2.imread("images/RecycleBin.png")
 picture_no_draw_zone = np.zeros((60, w, 3), dtype=np.uint8)
 picture_no_draw_zone[:4, :] = (219, 215, 210)
 picture_no_draw_zone[30:, w - 30:] = bin
+picture_no_draw_zone[30:, :30] = bin
 fl_figure = 0
 fl = False
 x_const = 0
 y_const = 0
-eps = 20
+# максимальное расстояние между пальцами для рисования, найдено подбором
+eps = 0.03 * w
 size = 3
 k = 1
 # распознование указательного пальца взято из канваса
@@ -90,7 +92,7 @@ while cap.isOpened():
         cv2.circle(flippedRGB, (x_index, y_index), size, (0, 0, 255), -1)
 
         # очистка холста
-        if 0 < h - y_index < 30 and 0 < w - x_index < 30:
+        if (0 < h - y_index < 30 and 0 < w - x_index < 30) or (0 < h - y_index < 30 and 0 < x_index < 30):
             helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
         # ставим ограничения на положение руки во время рисования
         if y_17 - y_0 > 20 or k * (x_index - x_little) > 5 or (y_1 - y_0) > 20:
