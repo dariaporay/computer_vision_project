@@ -11,7 +11,6 @@ handsDetector = mp.solutions.hands.Hands(static_image_mode=False,
 cap = cv2.VideoCapture(0)
 ret, frame = cap.read()
 h, w, _ = frame.shape
-print(h, w)
 helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
 bin = cv2.imread("images/RecycleBin.png")
 picture_no_draw_zone = np.zeros((60, w, 3), dtype=np.uint8)
