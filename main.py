@@ -9,11 +9,13 @@ handsDetector = mp.solutions.hands.Hands(static_image_mode=False,
                    min_detection_confidence=0.9,
                    min_tracking_confidence=0.9)
 cap = cv2.VideoCapture(0)
+
 ret, frame = cap.read()
 h, w, _ = frame.shape
 helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
 bin = cv2.imread("images/RecycleBin.png")
 picture_no_draw_zone = np.zeros((60, w, 3), dtype=np.uint8)
+# линия между хонами рисования и не присования
 picture_no_draw_zone[:4, :] = (219, 215, 210)
 picture_no_draw_zone[30:, w - 30:] = bin
 picture_no_draw_zone[30:, :30] = bin
@@ -93,7 +95,8 @@ while cap.isOpened():
         if (0 < h - y_index < 30 and 0 < w - x_index < 30) or (0 < h - y_index < 30 and 0 < x_index < 30):
             helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
         # ставим ограничения на положение руки во время рисования
-        if y_17 - y_0 > 20 or k * (x_index - x_little) > 5 or (y_1 - y_0) > 20:
+        # числа подобраны ручками
+        if y_17 - y_0 > eps or k * (x_index - x_little) > -eps / 4 or (y_1 - y_0) > eps or y_index - y_0 > -eps / 4:
             fl = False
         # ограничения пройдены, можно рисовать
         else:
