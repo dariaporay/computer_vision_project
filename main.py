@@ -6,6 +6,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from io import BytesIO
 from tkinter import filedialog, Tk
+from collections import deque
 
 
 # Функция для поиска доступной камеры
@@ -34,7 +35,8 @@ if cap is None:
     cap = cv2.VideoCapture(0)
 
 ret, frame = cap.read()
-h, w = 720, 1280
+ph, pw, pc = frame.shape
+h, w = 720, int(pw * 720 / ph)
 
 if not ret:
     print("Ошибка: не удалось получить кадр с камеры")
@@ -74,6 +76,10 @@ picture_no_draw_zone = np.zeros((60, w, 3), dtype=np.uint8)
 color = (0, 0, 0)
 x_index_pred = -1
 y_index_pred = -1
+
+# Параметры для лазера
+LASER_FADE_FRAMES = 30  # Количество кадров, через которое исчезает линия
+laser_trails = deque(maxlen=100)  # Хранит точки лазера с временем жизни
 
 
 # Функция для парсинга GeoGebra файла
@@ -401,6 +407,10 @@ def load_icon(path, size):
             cv2.polylines(icon, [points], False, (255, 255, 0), 2)
         elif "прямоугольник" in path:
             cv2.rectangle(icon, (5, 5), (size - 5, size - 5), (0, 255, 255), -1)
+        elif "лазер" in path:
+            # Иконка лазера - красная линия и точка
+            cv2.line(icon, (5, size - 5), (size - 5, 5), (0, 0, 255), 2)
+            cv2.circle(icon, (size - 5, 5), 5, (0, 0, 255), -1)
         elif "импорт" in path:
             cv2.arrowedLine(icon, (size // 2, 5), (size // 2, size - 5), (0, 255, 255), 2)
             cv2.rectangle(icon, (size // 4, size - 5), (3 * size // 4, size - 5), (0, 255, 255), 2)
@@ -422,6 +432,7 @@ line_icon = load_icon("images/отрезок.png", icon_size)
 eraser_icon = load_icon("images/ластик.png", icon_size)
 curve_icon = load_icon("images/кривая.png", icon_size)
 rect_icon = load_icon("images/прямоугольник.png", icon_size)
+laser_icon = load_icon("images/лазер.png", icon_size)
 import_icon = load_icon("images/импорт.png", icon_size)
 
 # Режимы рисования
@@ -430,7 +441,8 @@ MODE_LINE = 1
 MODE_CIRCLE = 2
 MODE_ERASER = 3
 MODE_RECTANGLE = 4
-MODE_IMPORT = 5
+MODE_LASER = 5
+MODE_IMPORT = 6
 
 current_mode = MODE_CURVE
 menu_expanded = False
@@ -440,6 +452,7 @@ menu_icons = [
     {"mode": MODE_LINE, "icon": line_icon, "name": "отрезок"},
     {"mode": MODE_CIRCLE, "icon": circle_icon, "name": "круг"},
     {"mode": MODE_RECTANGLE, "icon": rect_icon, "name": "прямоугольник"},
+    {"mode": MODE_LASER, "icon": laser_icon, "name": "лазер"},
     {"mode": MODE_ERASER, "icon": eraser_icon, "name": "ластик"},
     {"mode": MODE_IMPORT, "icon": import_icon, "name": "импорт"}
 ]
@@ -454,6 +467,8 @@ def draw_interface(frame, current_mode, menu_expanded):
         main_icon = circle_icon
     elif current_mode == MODE_RECTANGLE:
         main_icon = rect_icon
+    elif current_mode == MODE_LASER:
+        main_icon = laser_icon
     elif current_mode == MODE_ERASER:
         main_icon = eraser_icon
     else:
@@ -506,6 +521,7 @@ start_x, start_y = 0, 0
 prev_x, prev_y = -1, -1
 drawing_size = 3
 k = 1
+frame_counter = 0
 
 # Переменные для импорта
 app_state = "drawing"
@@ -517,7 +533,7 @@ was_interacting = False
 # Создаем слои
 drawing_layer = np.zeros((h, w, 3), dtype=np.uint8)
 preview_layer = np.zeros((h, w, 3), dtype=np.uint8)  # Слой для предпросмотра фигур
-finger_layer = np.zeros((h, w, 3), dtype=np.uint8)   # Отдельный слой для точки на пальце
+finger_layer = np.zeros((h, w, 3), dtype=np.uint8)  # Отдельный слой для точки на пальце
 
 print(f"Программа запущена. Размер экрана: {w}x{h}")
 print(f"eps = {eps}")
@@ -529,11 +545,23 @@ while cap.isOpened():
         print("Ошибка захвата кадра")
         break
     else:
-        # Задаем фиксированный размер окна (например, 1280x720)
         frame = cv2.resize(frame, (w, h))
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
+    frame_counter += 1
+
+    # Обновляем время жизни лазерных линий
+    new_trails = []
+    for trail in laser_trails:
+        if trail[2] > 0:
+            new_trails.append((trail[0], trail[1], trail[2] - 1))
+        else:
+            # Удаляем истекшие линии
+            pass
+    laser_trails.clear()
+    laser_trails.extend(new_trails)
 
     flipped = np.fliplr(frame)
     flippedRGB = cv2.cvtColor(flipped, cv2.COLOR_BGR2RGB)
@@ -586,10 +614,7 @@ while cap.isOpened():
                 if is_finger_on_icon(x_index, y_index, main_icon_x, icon_y, icon_size):
                     if current_mode != item["mode"]:
                         current_mode = item["mode"]
-                        if current_mode == MODE_ERASER:
-                            color = (255, 255, 255)
-                        else:
-                            color = (0, 0, 0)
+                        color = (255, 255, 255)
                         mode_changed = True
                         is_drawing = False
                         prev_x, prev_y = -1, -1
@@ -693,6 +718,7 @@ while cap.isOpened():
                     0 < h - y_index < bin_zone and 0 < x_index < bin_zone):
                 drawing_layer = np.zeros((h, w, 3), dtype=np.uint8)
                 helped_picture = np.zeros((h, w, 3), dtype=np.uint8)
+                laser_trails.clear()
                 preview_layer.fill(0)
                 is_drawing = False
                 prev_x, prev_y = -1, -1
@@ -705,12 +731,19 @@ while cap.isOpened():
 
                     if current_mode == MODE_CURVE:
                         cv2.circle(drawing_layer, (x_index, y_index), drawing_size, color, -1)
+                    elif current_mode == MODE_LASER:
+                        # Для лазера добавляем точку с временем жизни
+                        laser_trails.append(((x_index, y_index), (x_index, y_index), LASER_FADE_FRAMES))
                     elif current_mode == MODE_ERASER:
                         cv2.circle(drawing_layer, (x_index, y_index), 20, (0, 0, 0), -1)
                 else:
                     if current_mode == MODE_CURVE:
                         if prev_x != -1 and prev_y != -1:
                             cv2.line(drawing_layer, (prev_x, prev_y), (x_index, y_index), color, drawing_size)
+                        prev_x, prev_y = x_index, y_index
+                    elif current_mode == MODE_LASER:
+                        # Добавляем линию лазера с временем жизни
+                        laser_trails.append(((prev_x, prev_y), (x_index, y_index), LASER_FADE_FRAMES))
                         prev_x, prev_y = x_index, y_index
                     elif current_mode == MODE_LINE:
                         # Рисуем предпросмотр на отдельном слое
@@ -769,6 +802,20 @@ while cap.isOpened():
     helped_mask = cv2.cvtColor(helped_picture, cv2.COLOR_BGR2GRAY)
     _, helped_mask = cv2.threshold(helped_mask, 1, 255, cv2.THRESH_BINARY)
     res_image[helped_mask == 255] = helped_picture[helped_mask == 255]
+
+    # Рисуем лазерные линии на preview_layer
+    laser_layer = np.zeros((h, w, 3), dtype=np.uint8)
+    for trail in laser_trails:
+        start_point, end_point, life = trail
+        # Чем меньше life, тем тусклее линия
+        alpha = life / LASER_FADE_FRAMES
+        laser_color = (int(color[0] * alpha), int(color[1] * alpha), int(color[2] * alpha))
+        cv2.line(laser_layer, start_point, end_point, laser_color, drawing_size + 1)
+
+    # Накладываем слой лазера
+    laser_mask = cv2.cvtColor(laser_layer, cv2.COLOR_BGR2GRAY)
+    _, laser_mask = cv2.threshold(laser_mask, 1, 255, cv2.THRESH_BINARY)
+    res_image[laser_mask == 255] = laser_layer[laser_mask == 255]
 
     # Накладываем слой предпросмотра фигур
     preview_mask = cv2.cvtColor(preview_layer, cv2.COLOR_BGR2GRAY)
